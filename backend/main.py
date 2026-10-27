@@ -30,7 +30,7 @@ class ScanRequest(BaseModel):
     def validate_email(cls, value: Optional[str]) -> Optional[str]:
         if value is None or not value.strip(): return None
         value = value.strip()
-        if not re.fullmatch(r'[^\\s@]+@[^\\s@]+\\.[^\\s@]+', value): raise ValueError('Enter a valid email address')
+        if not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', value): raise ValueError('Enter a valid email address')
         return value
 
 @app.middleware('http')
@@ -58,8 +58,8 @@ async def brave_search(query: str, client: httpx.AsyncClient) -> list[dict]:
         url=x.get('url','')
         if not url.startswith(('https://','http://')): continue
         desc=x.get('description','')
-        desc=re.sub(r'[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}','[email redacted]',desc,flags=re.I)
-        desc=re.sub(r'(?<!\\w)(?:\\+?\\d[\\d .()\\-]{7,}\\d)(?!\\w)','[phone number redacted]',desc)
+        desc=re.sub(r'[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}','[email redacted]',desc,flags=re.I)
+        desc=re.sub(r'(?<!\w)(?:\+?\d[\d .()\-]{7,}\d)(?!\w)','[phone number redacted]',desc)
         out.append({'title':x.get('title','Untitled result'),'url':url,'description':desc[:700],'age':x.get('age') or x.get('page_age') or ''})
     return out
 
@@ -89,9 +89,9 @@ async def scan(body: ScanRequest):
     if not body.authorized: raise HTTPException(403,'Confirm this is your own audit or an explicitly authorized audit.')
     name=body.name.strip()
     if len(name)<2: raise HTTPException(422,'Enter at least two characters.')
-    context=body.context.strip(); identity=f'\"{name}\"'+(f' \"{context}\"' if context else '')
+    context=body.context.strip(); identity='"'+name+'"'+(' "'+context+'"' if context else '')
     queries=[identity,identity+' public profile',identity+' portfolio OR publications OR interview']
-    if context: queries=[identity,f'\"{name}\" \"{context}\" public profile']
+    if context: queries=[identity,'"'+name+'" "'+context+'" public profile']
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(15.0,connect=7.0),follow_redirects=True) as client:
             gathered=await asyncio.gather(*(brave_search(q,client) for q in queries),return_exceptions=True) if BRAVE_KEY else []
