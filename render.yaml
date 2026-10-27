@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: digital-twin-osint
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: BRAVE_SEARCH_API_KEY
+        sync: false
+      - key: HIBP_API_KEY
+        sync: false
